@@ -1,0 +1,34 @@
+name: Daily Task Reminder
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # Runs daily at 18:00 UTC (adjust as needed)
+  workflow_dispatch:
+
+jobs:
+  send_reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate task list for email
+        run: |
+          echo "Tasks for tomorrow:" > email_body.txt
+          while read -r task; do
+            echo "- $task" >> email_body.txt
+          done < <(yq '.tasks[]' .github/tasks.yml)
+        shell: bash
+
+      - name: Send task email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Your tasks for tomorrow"
+          to: ${{ secrets.EMAIL_TO }}
+          from: Daily Task Reminder <${{ secrets.EMAIL_USERNAME }}>
+          body: file://email_body.txt
+          secure: true
